@@ -1,3 +1,6 @@
+# frozen_string_literal: true
+
+# Controls the flow of the tic-tac-toe game
 class Game
   def set_up
     @board = GameBoard.new
@@ -13,36 +16,15 @@ class Game
   end
 
   def play_round
-    puts "It's #{@whose_turn.name}'s turn!"
-    @board.show
-    puts "#{@whose_turn.name}, where would you like to mark the board?"
-    coords = gets.chomp
-
-    # coords validation
+    coords = prompt_for_coords
     coords_valid = validate_coords(coords)
-    unless coords_valid
-      play_round
-      return
-    end
+    return play_round unless coords_valid
 
     did_mark = @whose_turn.place_marker(coords)
-    unless did_mark
-      play_round
-      return
-    end
+    return play_round unless did_mark
 
     @board.show
-
-    if @board.win?(@whose_turn)
-      puts "Game over! #{@whose_turn.name} wins!"
-      play_again
-    elsif @board.tie?
-      puts "Game over! It's a tie."
-      play_again
-    else
-      @whose_turn = @whose_turn == @player1 ? @player2 : @player1
-      play_round
-    end
+    game_over? ? play_again : play_round
   end
 
   private
@@ -53,11 +35,19 @@ class Game
       puts 'Type the coordinates with no spaces like: A1'
       return false
     end
-    unless %w[A B C].include?(row)
+    validate_row_coord(row) && validate_col_coord(col)
+  end
+
+  def validate_row_coord(row_coord)
+    unless %w[A B C].include?(row_coord)
       puts 'Please enter a valid uppercase letter A-C as the first coordinate.'
       return false
     end
-    unless col.to_i.between?(1, 3)
+    true
+  end
+
+  def validate_col_coord(col_coord)
+    unless col_coord.to_i.between?(1, 3)
       puts 'Please type in a valid number 1-3 as the second coordinate'
       return false
     end
@@ -69,12 +59,33 @@ class Game
     play_again = gets.chomp
     play_again == 'y' ? set_up : nil
   end
+
+  def prompt_for_coords
+    puts "It's #{@whose_turn.name}'s turn!"
+    @board.show
+    puts "#{@whose_turn.name}, where would you like to mark the board?"
+    gets.chomp
+  end
+
+  def game_over?
+    if @board.win?(@whose_turn.marker)
+      puts "Game over! #{@whose_turn.name} wins!"
+      true
+    elsif @board.tie?
+      puts "Game over! It's a tie."
+      true
+    else
+      @whose_turn = @whose_turn == @player1 ? @player2 : @player1
+      false
+    end
+  end
 end
 
+# Keeps track of the values on the tic-tac-toe game board
 class GameBoard
   def initialize
-    @board_values = [['_', '_', '_'],
-                     ['_', '_', '_'],
+    @board_values = [%w[_ _ _],
+                     %w[_ _ _],
                      [' ', ' ', ' ']]
     @translate_rows_values = { 'A' => 0, 'B' => 1, 'C' => 2 }
   end
@@ -97,35 +108,8 @@ class GameBoard
     puts "C #{@board_values[2].join('|')}"
   end
 
-  def win?(player)
-    # check rows
-    @board_values.each do |row|
-      if row.all?(player.marker)
-        return true
-      end
-    end
-
-    # check columns
-    3.times do |i|
-      if @board_values[0][i] == player.marker &&
-         @board_values[1][i] == player.marker &&
-         @board_values[2][i] == player.marker
-        return true
-      end
-    end
-
-    # check diagonals
-    if @board_values[0][0] == player.marker &&
-       @board_values[1][1] == player.marker &&
-       @board_values[2][2] == player.marker
-      return true
-    elsif @board_values[0][2] == player.marker &&
-          @board_values[1][1] == player.marker &&
-          @board_values[2][0] == player.marker
-      return true
-    end
-
-    false
+  def win?(marker)
+    row_win?(marker) || column_win?(marker) || diagonal_win?(marker)
   end
 
   def tie?
@@ -145,10 +129,45 @@ class GameBoard
   end
 
   def spot_empty?(spot)
-    [' ', '_'].include?(spot) ? true : false
+    [' ', '_'].include?(spot)
+  end
+
+  def row_win?(marker)
+    @board_values.each do |row|
+      return true if row.all?(marker)
+    end
+    false
+  end
+
+  def column_win?(marker)
+    3.times do |i|
+      if @board_values[0][i] == marker &&
+         @board_values[1][i] == marker &&
+         @board_values[2][i] == marker
+        return true
+      end
+    end
+
+    false
+  end
+
+  def diagonal_win?(marker)
+    # check diagonals
+    if @board_values[0][0] == marker &&
+       @board_values[1][1] == marker &&
+       @board_values[2][2] == marker
+      return true
+    elsif @board_values[0][2] == marker &&
+          @board_values[1][1] == marker &&
+          @board_values[2][0] == marker
+      return true
+    end
+
+    false
   end
 end
 
+# Contains the player information as well as the board they are playing on
 class Player
   attr_reader :marker, :name
 
